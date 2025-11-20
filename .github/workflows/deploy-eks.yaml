@@ -36,16 +36,16 @@ jobs:
         uses: aws-actions/amazon-ecr-login@v2
         with:
           registry-type: public
-  
-      - name: Build, tag, and puch image to ECR
+
+      - name: Build, tag, and push docker image to Amazon ECR Public
         env:
-         ECR_REGISTRY: ${{ steps.login-ecr-public.outputs.registry }} 
-         REGISTRY_ALIAS: a6v5u8s9
-         REPOSITORY: eks-lab
-         IMAGE_TAG: ${{ github.sha }}
+          REPOSITORY_URI: public.ecr.aws/a6v5u8s9/eks-lab  # Replaced with your actual URI
+          IMAGE_TAG: ${{ github.sha }}
         run: |
-           docker build -t $REGISTRY/$REGISTRY_ALIAS/$REPOSITORY:$IMAGE_TAG .
-           docker push $REGISTRY/$REGISTRY_ALIAS/$REPOSITORY:$IMAGE_TAG
+          docker build -t $REPOSITORY_URI:$IMAGE_TAG .
+          docker push $REPOSITORY_URI:$IMAGE_TAG
+
+    
             
       - name: Update kube config 
         run: aws eks update-kubeconfig --name $EKS_CLUSTER_NAME --region $AWS_REGION
