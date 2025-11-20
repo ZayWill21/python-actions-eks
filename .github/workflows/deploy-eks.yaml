@@ -8,14 +8,12 @@ env:
   EKS_CLUSTER_NAME: EKS-Lab-cluster
   AWS_REGION: us-east-1
   AWS_ACCOUNT: ${{ secrets.AWS_ACCOUNT_ID }}
+  AWS_ACTIONS_ROLE:  ${{ secrets.AWS_ACTIONS_ROLE }}
 
 jobs:
-
   build:
-
     name: Deployment
     runs-on: ubuntu-latest
-
     steps:
 
     - name: Set short git commit SHA
@@ -32,8 +30,8 @@ jobs:
         aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
         aws-region: ${{env.AWS_REGION}}
         with:
-          role-to-assume: arn:aws:iam::123456789012:role/my-github-actions-role
-          aws-region: aws-region-1
+          role-to-assume: AWS_ACTIONS_ROLE
+          aws-region: $AWS_REGION
 
     - name: Login to Amazon ECR
       id: login-ecr
