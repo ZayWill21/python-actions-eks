@@ -1,8 +1,9 @@
 name: Deploy to ECR
 on:
-
   push:
-    branches: [ master ] 
+    branches: [ main ] 
+permissions:
+  id-token: write
 env:
   ECR_REPOSITORY: eks-lab
   EKS_CLUSTER_NAME: EKS-Lab-cluster
@@ -11,48 +12,49 @@ env:
   AWS_ACTIONS_ROLE:  ${{ secrets.AWS_ACTIONS_ROLE }}
 
 jobs:
-  build:
-    name: Deployment
+  run_job_with_aws:
     runs-on: ubuntu-latest
+    name: Deployment
     steps:
-
-    - name: Set short git commit SHA
-      id: commit
-      uses: prompt/actions-commit-hash@v2
-
-    - name: Check out code
-      uses: actions/checkout@v2 
-
-    - name: Config AWS Creds
-      uses: aws-actions/configure-aws-credential@v1
-      with:
-        aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
-        aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
-        aws-region: ${{env.AWS_REGION}}
+      - name: Set short git commit SHA
+        id: commit
+        uses: prompt/actions-commit-hash@v2
+  
+      - name: Check out code
+        uses: actions/checkout@v2 
+  
+      - name: Config AWS Creds
+        uses: aws-actions/configure-aws-credential@v1
         with:
-          role-to-assume: AWS_ACTIONS_ROLE
-          aws-region: $AWS_REGION
-
-    - name: Login to Amazon ECR
-      id: login-ecr
-      uses: aws-actions/amazon-ecr-login@v1
-
-    - name: Build, tag, and puch image to ECR
-      env:
-       ECR_REGISTRY: ${{ steps.login-ecr.outputs.registry }}  
-       IMAGE_TAG: ${{ steps.commit.outputs.short }}
-      run: |
-        docker build -t $ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG -f docker/Dockerfile .
-        docker push $ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG
-
-    - name: Update kube config 
-      run: aws eks update-kubeconfig --name $EKS_CLUSTER_NAME --region $AWS_REGION
-
-    - name: Deploy to EKS 
-      env:
-        ECR_REGISTRY:  ${{ steps.login-ecr.outputs.registry }} 
-        IMAGE_TAG: ${{ steps.commit.outputs.short }}
-        run: | 
-        sed -i.bak "s|DOCKER_IMAGE|$ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG|g" manifests/app-deploy.yaml && \
-        kubectl apply -f manifests/app-deploy.yaml
-        kubectl apply -f manifests/app-service.yaml
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-region: ${{env.AWS_REGION}}
+          role-to-assume: ${{env.AWS_ACTIONS_ROLE}}
+  
+      - name: Login to Amazon ECR Public
+        id: login-ecr-public
+        uses: aws-actions/amazon-ecr-login@v2
+        with:
+          registry-type: public
+  
+      - name: Build, tag, and puch image to ECR
+        env:
+         ECR_REGISTRY: ${{ steps.login-ecr-public.outputs.registry }} 
+         REGISTRY_ALIAS: a6v5u8s9
+         REPOSITORY: eks-lab
+         IMAGE_TAG: ${{ github.sha }}
+         run: |
+            docker build -t $REGISTRY/$REGISTRY_ALIAS/$REPOSITORY:$IMAGE_TAG .
+            docker push $REGISTRY/$REGISTRY_ALIAS/$REPOSITORY:$IMAGE_TAG
+            
+      - name: Update kube config 
+        run: aws eks update-kubeconfig --name $EKS_CLUSTER_NAME --region $AWS_REGION
+  
+      - name: Deploy to EKS 
+        env:
+          ECR_REGISTRY:  ${{ steps.login-ecr.outputs.registry }} 
+          IMAGE_TAG: ${{ steps.commit.outputs.short }}
+          run: | 
+            sed -i.bak "s|DOCKER_IMAGE|$ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG|g" manifests/app-deploy.yaml && \
+            kubectl apply -f manifests/app-deploy.yaml
+            kubectl apply -f manifests/app-service.yaml
