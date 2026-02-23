@@ -7,8 +7,8 @@ permissions:
   contents: read
 env:
   ECR_REPOSITORY: eks-lab
-  EKS_CLUSTER_NAME: EKS-Lab-cluster
-  AWS_REGION: us-east-1
+  EKS_CLUSTER_NAME:  ${{ secrets.AWS_EKS_CLUSTER_NAME }}
+  AWS_REGION: ${{ secrets.AWS_REGION }}
   AWS_ACCOUNT: ${{ secrets.AWS_ACCOUNT_ID }}
   AWS_ACTIONS_ROLE:  ${{ secrets.AWS_ACTIONS_ROLE }}
 
